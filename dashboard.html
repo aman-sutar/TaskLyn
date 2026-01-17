@@ -1,0 +1,1779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tasklyn - Personal Task Manager</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: '#6366f1',
+                        secondary: '#8b5cf6',
+                        accent: '#06b6d4',
+                        surface: '#ffffff',
+                        muted: '#f1f5f9',
+                        border: '#e2e8f0',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        * { box-sizing: border-box; }
+        body { background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); min-height: 100vh; }
+        
+        .hide-scroll::-webkit-scrollbar { height: 6px; }
+        .hide-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
+        .hide-scroll::-webkit-scrollbar-track { background-color: transparent; }
+        
+        .modal-overlay { backdrop-filter: blur(12px); }
+        
+        .task-card { 
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+            border: 1px solid rgba(255,255,255,0.5);
+        }
+        .task-card:hover { 
+            transform: translateY(-4px); 
+            box-shadow: 0 15px 30px rgba(0,0,0,0.1); 
+        }
+        
+        .card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        
+        .card-elevated {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+        }
+        
+        .color-blue { background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); }
+        .color-purple { background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%); }
+        .color-orange { background: linear-gradient(135deg, #ffedd5 0%, #fed7aa 100%); }
+        .color-green { background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%); }
+        .color-pink { background: linear-gradient(135deg, #fce7f3 0%, #fbcfe8 100%); }
+        
+        /* Button Styles */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            border-radius: 12px;
+            cursor: pointer;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.35);
+            border: none;
+        }
+        .btn-primary:hover {
+            box-shadow: 0 6px 25px rgba(99, 102, 241, 0.45);
+            transform: translateY(-2px);
+        }
+        
+        .btn-secondary {
+            background: #f1f5f9;
+            color: #475569;
+            border: 1px solid #e2e8f0;
+        }
+        .btn-secondary:hover {
+            background: #e2e8f0;
+            border-color: #cbd5e1;
+        }
+        
+        .btn-outline {
+            background: transparent;
+            color: #6366f1;
+            border: 2px solid #6366f1;
+        }
+        .btn-outline:hover {
+            background: #6366f1;
+            color: white;
+        }
+        
+        .btn-ghost {
+            background: transparent;
+            color: #64748b;
+            border: none;
+        }
+        .btn-ghost:hover {
+            background: #f1f5f9;
+            color: #1e293b;
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+            border: none;
+        }
+        .btn-danger:hover {
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.35);
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+            color: white;
+            border: none;
+        }
+        
+        .btn-sm { padding: 0.5rem 1rem; font-size: 0.75rem; }
+        .btn-md { padding: 0.625rem 1.25rem; font-size: 0.875rem; }
+        .btn-lg { padding: 0.875rem 1.75rem; font-size: 1rem; }
+        
+        .btn-icon {
+            width: 40px;
+            height: 40px;
+            padding: 0;
+            border-radius: 12px;
+        }
+        .btn-icon-sm {
+            width: 32px;
+            height: 32px;
+            padding: 0;
+            border-radius: 10px;
+        }
+        
+        /* Progress Bars */
+        .progress-bar {
+            height: 8px;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .progress-todo { background: #dbeafe; }
+        .progress-todo .progress-fill { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
+        .progress-working { background: #fed7aa; }
+        .progress-working .progress-fill { background: linear-gradient(90deg, #f97316, #fb923c); }
+        .progress-done { background: #bbf7d0; }
+        .progress-done .progress-fill { background: linear-gradient(90deg, #22c55e, #4ade80); }
+        
+        .progress-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+        
+        /* Navigation */
+        .nav-item { 
+            position: relative; 
+            transition: all 0.3s ease; 
+            border-radius: 12px;
+        }
+        .nav-item.active { 
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+        }
+        .nav-item:not(.active):hover {
+            background: #f1f5f9;
+        }
+        
+        .priority-high { color: #ef4444; background: #fef2f2; }
+        .priority-medium { color: #f59e0b; background: #fffbeb; }
+        .priority-low { color: #22c55e; background: #f0fdf4; }
+        
+        .kanban-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            transition: all 0.2s ease;
+        }
+        .kanban-card:hover {
+            border-color: #cbd5e1;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+        }
+
+        .range-slider {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: #e2e8f0;
+            outline: none;
+        }
+        .range-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4);
+        }
+        
+        /* Mobile Bottom Nav */
+        .mobile-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            border-top: 1px solid #e2e8f0;
+            padding: 0.5rem;
+            display: none;
+            z-index: 100;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
+        }
+        
+        @media (max-width: 768px) {
+            .mobile-nav { display: flex; justify-content: space-around; }
+            .desktop-nav { display: none !important; }
+            body { padding-bottom: 80px; }
+        }
+        
+        .mobile-nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            /* padding: 0.5rem 1rem; */
+            border-radius: 12px;
+            transition: all 0.2s;
+            color: #64748b;
+        }
+        .mobile-nav-item.active {
+            color: #6366f1;
+            background: #eef2ff;
+        }
+        .mobile-nav-item span {
+            font-size: 0.625rem;
+            margin-top: 0.25rem;
+            font-weight: 600;
+        }
+        
+        /* Avatar Picker */
+        .avatar-option {
+            width: 60px;
+            height: 60px;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 3px solid transparent;
+        }
+        .avatar-option:hover {
+            transform: scale(1.1);
+        }
+        .avatar-option.selected {
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+        }
+        
+        /* Responsive Grid */
+        @media (max-width: 640px) {
+            .stat-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+        
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+        }
+
+        .day-btn {
+            transition: all 0.2s ease;
+            border: 1px solid #e2e8f0;
+        }
+        .day-btn.active {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            color: white;
+            border-color: transparent;
+            box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+        }
+        .day-btn:not(.active):hover {
+            background: #f1f5f9;
+            border-color: #cbd5e1;
+        }
+    </style>
+</head>
+<body class="font-sans text-gray-700 p-3 sm:p-4 md:p-6 lg:p-8">
+
+    <!-- Main Container -->
+    <div class="max-w-[1400px] mx-auto">
+
+        <!-- Top Navigation Bar -->
+        <nav class="card-elevated p-3 sm:p-4 mb-4 sm:mb-6">
+            <div class="flex justify-between items-center">
+                
+                <!-- Logo -->
+                <div class="flex items-center gap-2 sm:gap-3">
+                    <div class="w-10 h-10 sm:w-11 sm:h-11 bg-gradient-to-br from-primary to-secondary rounded-xl flex items-center justify-center shadow-lg shadow-primary/30">
+                        <i class="ph-fill ph-check-square text-white text-lg sm:text-xl"></i>
+                    </div>
+                    <div class="hidden sm:block">
+                        <h1 class="text-lg sm:text-xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">Tasklyn</h1>
+                        <p class="text-[9px] sm:text-[10px] text-gray-400 font-medium">Personal Task Manager</p>
+                    </div>
+                </div>
+
+                <!-- Desktop Navigation Tabs -->
+                <div class="desktop-nav hidden md:flex items-center bg-muted rounded-2xl p-1.5 gap-1 border border-border">
+                    <button onclick="switchTab('dashboard')" id="tab-dashboard" class="nav-item active px-3 lg:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-medium flex items-center gap-1.5 sm:gap-2">
+                        <i class="ph ph-squares-four text-base sm:text-lg"></i><span class="hidden lg:inline">Dashboard</span>
+                    </button>
+                    <button onclick="switchTab('tasks')" id="tab-tasks" class="nav-item text-gray-600 px-3 lg:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-medium flex items-center gap-1.5 sm:gap-2">
+                        <i class="ph ph-list-checks text-base sm:text-lg"></i><span class="hidden lg:inline">All Tasks</span>
+                    </button>
+                    <button onclick="switchTab('activity')" id="tab-activity" class="nav-item text-gray-600 px-3 lg:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-medium flex items-center gap-1.5 sm:gap-2">
+                        <i class="ph ph-chart-bar text-base sm:text-lg"></i><span class="hidden lg:inline">Activity</span>
+                    </button>
+                    <button onclick="switchTab('notes')" id="tab-notes" class="nav-item text-gray-600 px-3 lg:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-medium flex items-center gap-1.5 sm:gap-2">
+                        <i class="ph ph-note text-base sm:text-lg"></i><span class="hidden lg:inline">Notes</span>
+                    </button>
+                    <button onclick="switchTab('analytics')" id="tab-analytics" class="nav-item text-gray-600 px-3 lg:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-medium flex items-center gap-1.5 sm:gap-2">
+                        <i class="ph ph-chart-pie-slice text-base sm:text-lg"></i><span class="hidden lg:inline">Analytics</span>
+                    </button>
+                </div>
+
+                <!-- Profile & Actions -->
+                <div class="flex items-center gap-2 sm:gap-3">
+                    <button class="btn btn-ghost btn-icon-sm sm:btn-icon" onclick="openSearchModal()">
+                        <i class="ph ph-magnifying-glass text-base sm:text-lg text-gray-600"></i>
+                    </button>
+                    <button class="btn btn-ghost btn-icon-sm sm:btn-icon relative" onclick="toggleNotifications()">
+                        <i class="ph ph-bell text-base sm:text-lg text-gray-600"></i>
+                        <span id="notificationBadge" class="hidden absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 bg-red-500 text-white text-[8px] sm:text-[10px] rounded-full flex items-center justify-center font-bold border-2 border-white">0</span>
+                    </button>
+                    <div class="flex items-center gap-2 sm:gap-3 pl-2 sm:pl-3 ml-1 sm:ml-2 border-l border-border cursor-pointer hover:bg-muted rounded-xl p-1.5 sm:p-2 transition-colors" onclick="showProfileSettings()">
+                        <img id="userAvatar" src="https://api.dicebear.com/7.x/fun-emoji/svg?seed=rgr" alt="Profile" class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl border-2 border-primary/20 shadow-sm bg-gray-100">
+                        <div class="hidden sm:block leading-tight pr-1">
+                            <p id="userName" class="text-xs sm:text-sm font-semibold text-gray-800">Your Name</p>
+                            <p class="text-[9px] sm:text-[10px] text-gray-400 font-medium">Personal Account</p>
+                        </div>
+                        <i class="ph ph-caret-down text-gray-400 hidden sm:block"></i>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Welcome Header -->
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6 gap-3 sm:gap-4 px-1">
+            <div>
+                <h2 id="greeting" class="text-lg sm:text-2xl font-bold text-gray-800 flex items-center gap-2">
+                    Good morning! <i class="ph ph-sun text-yellow-500"></i>
+                </h2>
+                <p class="text-gray-500 text-xs sm:text-sm mt-0.5 sm:mt-1 flex items-center gap-2">
+                    <i class="ph ph-calendar-blank text-gray-400"></i>
+                    <span id="currentDate"></span> 
+                    <span class="text-gray-300 hidden sm:inline">•</span> 
+                    <span id="taskSummary" class="hidden sm:inline">Let's be productive today</span>
+                </p>
+            </div>
+            <button onclick="openTaskModal()" class="btn btn-primary btn-sm sm:btn-md w-full sm:w-auto">
+                <i class="ph ph-plus-circle text-base sm:text-lg"></i> Add New Task
+            </button>
+        </div>
+
+        <!-- Dashboard View -->
+        <div id="view-dashboard" class="view-content">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
+
+                <!-- Quick Stats Row -->
+                <div class="lg:col-span-12 grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 stat-grid">
+                    <div class="card p-3 sm:p-5">
+                        <div class="flex items-center gap-3 sm:gap-4">
+                            <div class="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-blue-100 to-blue-200 rounded-xl flex items-center justify-center border border-blue-200">
+                                <i class="ph ph-list-checks text-lg sm:text-xl text-blue-600"></i>
+                            </div>
+                            <div>
+                                <p class="text-xl sm:text-2xl font-bold text-gray-800" id="statTotalTasks">0</p>
+                                <p class="text-[10px] sm:text-xs text-gray-500 font-medium">Total Tasks</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card p-3 sm:p-5">
+                        <div class="flex items-center gap-3 sm:gap-4">
+                            <div class="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-green-100 to-green-200 rounded-xl flex items-center justify-center border border-green-200">
+                                <i class="ph ph-check-circle text-lg sm:text-xl text-green-600"></i>
+                            </div>
+                            <div>
+                                <p class="text-xl sm:text-2xl font-bold text-gray-800" id="statCompleted">0</p>
+                                <p class="text-[10px] sm:text-xs text-gray-500 font-medium">Completed</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card p-3 sm:p-5">
+                        <div class="flex items-center gap-3 sm:gap-4">
+                            <div class="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-orange-100 to-orange-200 rounded-xl flex items-center justify-center border border-orange-200">
+                                <i class="ph ph-spinner text-lg sm:text-xl text-orange-600"></i>
+                            </div>
+                            <div>
+                                <p class="text-xl sm:text-2xl font-bold text-gray-800" id="statInProgress">0</p>
+                                <p class="text-[10px] sm:text-xs text-gray-500 font-medium">In Progress</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card p-3 sm:p-5">
+                        <div class="flex items-center gap-3 sm:gap-4">
+                            <div class="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-purple-100 to-purple-200 rounded-xl flex items-center justify-center border border-purple-200">
+                                <i class="ph ph-timer text-lg sm:text-xl text-purple-600"></i>
+                            </div>
+                            <div>
+                                <p class="text-xl sm:text-2xl font-bold text-gray-800" id="statTotalHours">0h</p>
+                                <p class="text-[10px] sm:text-xs text-gray-500 font-medium">Focus Time</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Today's Tasks -->
+                <div class="lg:col-span-8 card-elevated p-4 sm:p-6">
+                    <div class="flex justify-between items-center mb-4 sm:mb-5">
+                        <div>
+                            <h3 class="text-base sm:text-lg font-bold text-gray-800">Today's Tasks</h3>
+                            <p class="text-[10px] sm:text-xs text-gray-400 mt-0.5">Your active tasks</p>
+                        </div>
+                        <button onclick="switchTab('tasks')" class="btn btn-secondary btn-sm">
+                            View All <i class="ph ph-arrow-right"></i>
+                        </button>
+                    </div>
+                    <div id="todayTasksContainer" class="flex gap-3 sm:gap-4 overflow-x-auto hide-scroll pb-2 min-h-[220px] sm:min-h-[260px]">
+                        <div id="emptyTasksPlaceholder" class="flex items-center justify-center w-full text-gray-400">
+                            <div class="text-center">
+                                <i class="ph ph-clipboard-text text-5xl sm:text-6xl mb-3 text-gray-300"></i>
+                                <p class="text-gray-500 font-medium text-sm sm:text-base">No tasks yet</p>
+                                <p class="text-xs sm:text-sm text-gray-400">Click "Add New Task" to get started!</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Progress Overview -->
+                <div class="lg:col-span-4 card-elevated p-4 sm:p-6">
+                    <div class="flex justify-between items-start mb-5 sm:mb-6">
+                        <div>
+                            <h3 class="text-base sm:text-lg font-bold text-gray-800">Progress</h3>
+                            <p class="text-[10px] sm:text-xs text-gray-400">Task completion rate</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-2xl sm:text-3xl font-bold text-primary" id="overallProgress">0%</p>
+                            <p class="text-[9px] sm:text-[10px] text-gray-400">Overall</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Horizontal Progress Bars -->
+                    <div class="space-y-4 sm:space-y-5">
+                        <!-- Done Progress Bar -->
+                        <div>
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-3 h-3 rounded-full bg-gradient-to-r from-green-500 to-emerald-400"></div>
+                                    <span class="text-xs sm:text-sm font-semibold text-gray-700">Completed</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xs sm:text-sm font-bold text-green-600" id="progressDone">0%</span>
+                                    <span class="text-[10px] sm:text-xs text-gray-400">(<span id="doneTaskCount">0</span> tasks)</span>
+                                </div>
+                            </div>
+                            <div class="h-3 sm:h-4 bg-gray-100 rounded-full overflow-hidden border border-gray-200">
+                                <div id="doneProgressBar" class="h-full bg-gradient-to-r from-green-500 to-emerald-400 rounded-full transition-all duration-500 ease-out" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- Working Progress Bar -->
+                        <div>
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-3 h-3 rounded-full bg-gradient-to-r from-orange-500 to-amber-400"></div>
+                                    <span class="text-xs sm:text-sm font-semibold text-gray-700">In Progress</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xs sm:text-sm font-bold text-orange-600" id="progressWorking">0%</span>
+                                    <span class="text-[10px] sm:text-xs text-gray-400">(<span id="workingTaskCount">0</span> tasks)</span>
+                                </div>
+                            </div>
+                            <div class="h-3 sm:h-4 bg-gray-100 rounded-full overflow-hidden border border-gray-200">
+                                <div id="workingProgressBar" class="h-full bg-gradient-to-r from-orange-500 to-amber-400 rounded-full transition-all duration-500 ease-out" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- Todo Progress Bar -->
+                        <div>
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-3 h-3 rounded-full bg-gradient-to-r from-blue-500 to-indigo-400"></div>
+                                    <span class="text-xs sm:text-sm font-semibold text-gray-700">To Do</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xs sm:text-sm font-bold text-blue-600" id="progressTodo">0%</span>
+                                    <span class="text-[10px] sm:text-xs text-gray-400">(<span id="todoTaskCount">0</span> tasks)</span>
+                                </div>
+                            </div>
+                            <div class="h-3 sm:h-4 bg-gray-100 rounded-full overflow-hidden border border-gray-200">
+                                <div id="todoProgressBar" class="h-full bg-gradient-to-r from-blue-500 to-indigo-400 rounded-full transition-all duration-500 ease-out" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Summary Stats -->
+                    <div class="grid grid-cols-3 gap-2 sm:gap-3 mt-5 sm:mt-6 pt-4 sm:pt-5 border-t border-border">
+                        <div class="text-center">
+                            <p class="text-lg sm:text-xl font-bold text-green-600" id="statDoneCount">0</p>
+                            <p class="text-[9px] sm:text-[10px] text-gray-500 font-medium">Done</p>
+                        </div>
+                        <div class="text-center">
+                            <p class="text-lg sm:text-xl font-bold text-orange-600" id="statWorkingCount">0</p>
+                            <p class="text-[9px] sm:text-[10px] text-gray-500 font-medium">Working</p>
+                        </div>
+                        <div class="text-center">
+                            <p class="text-lg sm:text-xl font-bold text-blue-600" id="statTodoCount">0</p>
+                            <p class="text-[9px] sm:text-[10px] text-gray-500 font-medium">To Do</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Weekly Activity -->
+                <div class="lg:col-span-8 card-elevated p-4 sm:p-6">
+                    <div class="flex flex-wrap justify-between items-center mb-4 gap-2 sm:gap-3">
+                        <div>
+                            <h3 class="text-base sm:text-lg font-bold text-gray-800">Weekly Activity</h3>
+                            <p class="text-[10px] sm:text-xs text-gray-400">Focus and break time this week</p>
+                        </div>
+                        <div class="flex items-center gap-3 sm:gap-4">
+                            <div class="flex items-center gap-1.5 sm:gap-2">
+                                <span class="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-primary rounded-sm"></span>
+                                <span class="text-[10px] sm:text-xs text-gray-500 font-medium">Focus</span>
+                            </div>
+                            <div class="flex items-center gap-1.5 sm:gap-2">
+                                <span class="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-gray-300 rounded-sm"></span>
+                                <span class="text-[10px] sm:text-xs text-gray-500 font-medium">Break</span>
+                            </div>
+                            <button onclick="switchTab('activity')" class="btn btn-ghost btn-sm hidden sm:flex">
+                                <i class="ph ph-pencil-simple"></i> Log Time
+                            </button>
+                        </div>
+                    </div>
+                    <div id="barChart"></div>
+                </div>
+
+                <!-- Quick Notes -->
+                <div class="lg:col-span-4 card-elevated p-4 sm:p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <div>
+                            <h3 class="text-base sm:text-lg font-bold text-gray-800">Quick Notes</h3>
+                            <p class="text-[10px] sm:text-xs text-gray-400">Recent notes</p>
+                        </div>
+                        <button onclick="switchTab('notes')" class="btn btn-ghost btn-sm">
+                            View All <i class="ph ph-arrow-right"></i>
+                        </button>
+                    </div>
+                    <div id="dashboardNotesContainer" class="space-y-2 sm:space-y-3 max-h-[180px] sm:max-h-[200px] overflow-y-auto">
+                        <div class="text-center text-gray-400 py-4 sm:py-6">
+                            <i class="ph ph-note-pencil text-3xl sm:text-4xl mb-2 text-gray-300"></i>
+                            <p class="text-xs sm:text-sm font-medium">No notes yet</p>
+                        </div>
+                    </div>
+                    <button onclick="openNoteModal()" class="btn btn-outline w-full mt-3 sm:mt-4 btn-sm sm:btn-md">
+                        <i class="ph ph-plus"></i> Add Note
+                    </button>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- All Tasks View -->
+        <div id="view-tasks" class="view-content hidden">
+            <!-- Filter Bar -->
+            <div class="card p-3 sm:p-4 mb-4 sm:mb-6 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
+                <div class="flex items-center gap-2 flex-1">
+                    <div class="w-8 h-8 sm:w-10 sm:h-10 bg-muted rounded-lg flex items-center justify-center border border-border">
+                        <i class="ph ph-funnel text-gray-500 text-sm sm:text-base"></i>
+                    </div>
+                    <select id="filterStatus" onchange="renderTasks()" class="flex-1 px-3 sm:px-4 py-2 sm:py-2.5 bg-muted rounded-xl text-xs sm:text-sm border border-border font-medium">
+                        <option value="all">All Status</option>
+                        <option value="todo">To Do</option>
+                        <option value="progress">In Progress</option>
+                        <option value="done">Completed</option>
+                    </select>
+                </div>
+                <div class="flex items-center gap-2 flex-1">
+                    <div class="w-8 h-8 sm:w-10 sm:h-10 bg-muted rounded-lg flex items-center justify-center border border-border">
+                        <i class="ph ph-flag text-gray-500 text-sm sm:text-base"></i>
+                    </div>
+                    <select id="filterPriority" onchange="renderTasks()" class="flex-1 px-3 sm:px-4 py-2 sm:py-2.5 bg-muted rounded-xl text-xs sm:text-sm border border-border font-medium">
+                        <option value="all">All Priority</option>
+                        <option value="high">High Priority</option>
+                        <option value="medium">Medium Priority</option>
+                        <option value="low">Low Priority</option>
+                    </select>
+                </div>
+                
+            </div>
+
+            <!-- Kanban Board -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5">
+                <!-- Todo Column -->
+                <div class="card p-4 sm:p-5">
+                    <div class="flex items-center justify-between mb-4 pb-3 sm:pb-4 border-b border-border">
+                        <div class="flex items-center gap-2 sm:gap-3">
+                            <div class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-blue-500"></div>
+                            <h3 class="font-bold text-gray-800 text-sm sm:text-base">To Do</h3>
+                            <span id="todoCount" class="text-[10px] sm:text-xs bg-blue-100 text-blue-700 px-2 py-0.5 sm:py-1 rounded-full font-semibold border border-blue-200">0</span>
+                        </div>
+                        <button onclick="openTaskModal('todo')" class="btn btn-ghost btn-icon-sm">
+                            <i class="ph ph-plus text-gray-600"></i>
+                        </button>
+                    </div>
+                    <div id="todoColumn" class="space-y-2 sm:space-y-3 min-h-[300px] sm:min-h-[400px] max-h-[500px] sm:max-h-[600px] overflow-y-auto"></div>
+                </div>
+                
+                <!-- In Progress Column -->
+                <div class="card p-4 sm:p-5">
+                    <div class="flex items-center justify-between mb-4 pb-3 sm:pb-4 border-b border-border">
+                        <div class="flex items-center gap-2 sm:gap-3">
+                            <div class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-orange-500"></div>
+                            <h3 class="font-bold text-gray-800 text-sm sm:text-base">In Progress</h3>
+                            <span id="progressCount" class="text-[10px] sm:text-xs bg-orange-100 text-orange-700 px-2 py-0.5 sm:py-1 rounded-full font-semibold border border-orange-200">0</span>
+                        </div>
+                        <button onclick="openTaskModal('progress')" class="btn btn-ghost btn-icon-sm">
+                            <i class="ph ph-plus text-gray-600"></i>
+                        </button>
+                    </div>
+                    <div id="progressColumn" class="space-y-2 sm:space-y-3 min-h-[300px] sm:min-h-[400px] max-h-[500px] sm:max-h-[600px] overflow-y-auto"></div>
+                </div>
+                
+                <!-- Done Column -->
+                <div class="card p-4 sm:p-5">
+                    <div class="flex items-center justify-between mb-4 pb-3 sm:pb-4 border-b border-border">
+                        <div class="flex items-center gap-2 sm:gap-3">
+                            <div class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-green-500"></div>
+                            <h3 class="font-bold text-gray-800 text-sm sm:text-base">Completed</h3>
+                            <span id="doneCount" class="text-[10px] sm:text-xs bg-green-100 text-green-700 px-2 py-0.5 sm:py-1 rounded-full font-semibold border border-green-200">0</span>
+                        </div>
+                        <button onclick="clearCompletedTasks()" class="btn btn-ghost btn-sm text-gray-400 hover:text-red-500">
+                            <i class="ph ph-trash"></i> <span class="hidden sm:inline">Clear</span>
+                        </button>
+                    </div>
+                    <div id="doneColumn" class="space-y-2 sm:space-y-3 min-h-[300px] sm:min-h-[400px] max-h-[500px] sm:max-h-[600px] overflow-y-auto"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Activity View -->
+        <div id="view-activity" class="view-content hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+                
+                <!-- Log Time Panel -->
+                <div class="lg:col-span-1 card-elevated p-4 sm:p-6">
+                    <div class="flex items-center gap-3 mb-5 sm:mb-6">
+                        <div class="w-9 h-9 sm:w-10 sm:h-10 bg-gradient-to-br from-primary to-secondary rounded-xl flex items-center justify-center">
+                            <i class="ph ph-clock text-white text-base sm:text-lg"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-base sm:text-lg font-bold text-gray-800">Log Activity</h3>
+                            <p class="text-[10px] sm:text-xs text-gray-400">Track your daily time</p>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-5 sm:mb-6">
+                        <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-2 sm:mb-3">Select Day</label>
+                        <div class="grid grid-cols-7 gap-1">
+                            <button onclick="selectDay(0)" class="day-btn active p-2 sm:p-2.5 text-[10px] sm:text-xs font-semibold rounded-lg bg-muted">Mon</button>
+                            <button onclick="selectDay(1)" class="day-btn p-2 sm:p-2.5 text-[10px] sm:text-xs font-semibold rounded-lg bg-muted">Tue</button>
+                            <button onclick="selectDay(2)" class="day-btn p-2 sm:p-2.5 text-[10px] sm:text-xs font-semibold rounded-lg bg-muted">Wed</button>
+                            <button onclick="selectDay(3)" class="day-btn p-2 sm:p-2.5 text-[10px] sm:text-xs font-semibold rounded-lg bg-muted">Thu</button>
+                            <button onclick="selectDay(4)" class="day-btn p-2 sm:p-2.5 text-[10px] sm:text-xs font-semibold rounded-lg bg-muted">Fri</button>
+                            <button onclick="selectDay(5)" class="day-btn p-2 sm:p-2.5 text-[10px] sm:text-xs font-semibold rounded-lg bg-muted">Sat</button>
+                            <button onclick="selectDay(6)" class="day-btn p-2 sm:p-2.5 text-[10px] sm:text-xs font-semibold rounded-lg bg-muted">Sun</button>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-4 sm:space-y-5">
+                        <div class="p-3 sm:p-4 bg-primary/5 rounded-xl border border-primary/20">
+                            <div class="flex items-center justify-between mb-2 sm:mb-3">
+                                <label class="text-xs sm:text-sm font-semibold text-gray-700 flex items-center gap-2">
+                                    <i class="ph ph-brain text-primary"></i> Focus Time
+                                </label>
+                                <span id="focusValue" class="text-base sm:text-lg font-bold text-primary">0h</span>
+                            </div>
+                            <input type="range" id="activityFocus" min="0" max="12" value="0" class="range-slider" oninput="updateActivityPreview()">
+                            <div class="flex justify-between text-[9px] sm:text-[10px] text-gray-400 mt-1">
+                                <span>0h</span>
+                                <span>12h</span>
+                            </div>
+                        </div>
+                        <div class="p-3 sm:p-4 bg-gray-50 rounded-xl border border-gray-200">
+                            <div class="flex items-center justify-between mb-2 sm:mb-3">
+                                <label class="text-xs sm:text-sm font-semibold text-gray-700 flex items-center gap-2">
+                                    <i class="ph ph-coffee text-gray-500"></i> Break Time
+                                </label>
+                                <span id="breakValue" class="text-base sm:text-lg font-bold text-gray-600">0h</span>
+                            </div>
+                            <input type="range" id="activityBreak" min="0" max="12" value="0" class="range-slider" oninput="updateActivityPreview()">
+                            <div class="flex justify-between text-[9px] sm:text-[10px] text-gray-400 mt-1">
+                                <span>0h</span>
+                                <span>12h</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button onclick="saveActivity()" class="btn btn-primary w-full mt-5 sm:mt-6 btn-md">
+                        <i class="ph ph-floppy-disk"></i> Save Activity
+                    </button>
+                </div>
+                
+                <!-- Weekly Chart -->
+                <div class="lg:col-span-2 card-elevated p-4 sm:p-6">
+                    <div class="flex flex-wrap justify-between items-center mb-4 gap-2 sm:gap-3">
+                        <div>
+                            <h3 class="text-base sm:text-lg font-bold text-gray-800">Weekly Overview</h3>
+                            <p class="text-[10px] sm:text-xs text-gray-400">Your activity for this week</p>
+                        </div>
+                        <div class="flex items-center gap-3 sm:gap-4">
+                            <div class="flex items-center gap-1.5 sm:gap-2">
+                                <span class="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-primary rounded-sm"></span>
+                                <span class="text-[10px] sm:text-xs text-gray-500 font-medium">Focus</span>
+                            </div>
+                            <div class="flex items-center gap-1.5 sm:gap-2">
+                                <span class="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-gray-300 rounded-sm"></span>
+                                <span class="text-[10px] sm:text-xs text-gray-500 font-medium">Break</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="activityBarChart"></div>
+                    
+                    <!-- Weekly Summary -->
+                    <div class="grid grid-cols-3 gap-3 sm:gap-4 mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-border">
+                        <div class="text-center p-3 sm:p-4 bg-primary/5 rounded-xl border border-primary/20">
+                            <p class="text-xl sm:text-2xl font-bold text-primary" id="totalFocusHours">0h</p>
+                            <p class="text-[10px] sm:text-xs text-gray-500 font-medium">Total Focus</p>
+                        </div>
+                        <div class="text-center p-3 sm:p-4 bg-gray-50 rounded-xl border border-gray-200">
+                            <p class="text-xl sm:text-2xl font-bold text-gray-600" id="totalBreakHours">0h</p>
+                            <p class="text-[10px] sm:text-xs text-gray-500 font-medium">Total Break</p>
+                        </div>
+                        <div class="text-center p-3 sm:p-4 bg-green-50 rounded-xl border border-green-200">
+                            <p class="text-xl sm:text-2xl font-bold text-green-600" id="avgFocusHours">0h</p>
+                            <p class="text-[10px] sm:text-xs text-gray-500 font-medium">Daily Avg</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notes View -->
+        <div id="view-notes" class="view-content hidden">
+            <div class="flex flex-wrap justify-between items-center mb-4 sm:mb-6 gap-3 sm:gap-4">
+                <div>
+                    <h3 class="text-lg sm:text-xl font-bold text-gray-800">All Notes</h3>
+                    <p class="text-xs sm:text-sm text-gray-500">Your personal notes and reminders</p>
+                </div>
+                <button onclick="openNoteModal()" class="btn btn-primary btn-sm sm:btn-md">
+                    <i class="ph ph-plus"></i> Create New Note
+                </button>
+            </div>
+            
+            <div id="allNotesContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+                <div class="col-span-full text-center text-gray-400 py-12 sm:py-20">
+                    <i class="ph ph-note-pencil text-5xl sm:text-7xl mb-3 sm:mb-4 text-gray-300"></i>
+                    <p class="text-base sm:text-lg font-medium">No notes yet</p>
+                    <p class="text-xs sm:text-sm">Create your first note to get started!</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analytics View -->
+        <div id="view-analytics" class="view-content hidden">
+            <!-- Stats Cards -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
+                <div class="card p-4 sm:p-5">
+                    <div class="flex items-center gap-3 sm:gap-4">
+                        <div class="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-blue-100 to-blue-200 rounded-2xl flex items-center justify-center border border-blue-200">
+                            <i class="ph ph-list-checks text-xl sm:text-2xl text-blue-600"></i>
+                        </div>
+                        <div>
+                            <p class="text-2xl sm:text-3xl font-bold text-gray-800" id="analyticTotal">0</p>
+                            <p class="text-[10px] sm:text-xs text-gray-500 font-medium">Total Tasks</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="card p-4 sm:p-5">
+                    <div class="flex items-center gap-3 sm:gap-4">
+                        <div class="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-green-100 to-green-200 rounded-2xl flex items-center justify-center border border-green-200">
+                            <i class="ph ph-check-circle text-xl sm:text-2xl text-green-600"></i>
+                        </div>
+                        <div>
+                            <p class="text-2xl sm:text-3xl font-bold text-gray-800" id="analyticDone">0</p>
+                            <p class="text-[10px] sm:text-xs text-gray-500 font-medium">Completed</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="card p-4 sm:p-5">
+                    <div class="flex items-center gap-3 sm:gap-4">
+                        <div class="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-purple-100 to-purple-200 rounded-2xl flex items-center justify-center border border-purple-200">
+                            <i class="ph ph-note text-xl sm:text-2xl text-purple-600"></i>
+                        </div>
+                        <div>
+                            <p class="text-2xl sm:text-3xl font-bold text-gray-800" id="analyticNotes">0</p>
+                            <p class="text-[10px] sm:text-xs text-gray-500 font-medium">Notes</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="card p-4 sm:p-5">
+                    <div class="flex items-center gap-3 sm:gap-4">
+                        <div class="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-orange-100 to-orange-200 rounded-2xl flex items-center justify-center border border-orange-200">
+                            <i class="ph ph-flame text-xl sm:text-2xl text-orange-600"></i>
+                        </div>
+                        <div>
+                            <p class="text-2xl sm:text-3xl font-bold text-gray-800" id="analyticStreak">0</p>
+                            <p class="text-[10px] sm:text-xs text-gray-500 font-medium">Day Streak</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Charts -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                <div class="card-elevated p-4 sm:p-6">
+                    <h3 class="text-base sm:text-lg font-bold text-gray-800 mb-4">Task Distribution</h3>
+                    <div id="pieChart"></div>
+                </div>
+                <div class="card-elevated p-4 sm:p-6">
+                    <h3 class="text-base sm:text-lg font-bold text-gray-800 mb-4">Weekly Focus Trend</h3>
+                    <div id="lineChart"></div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Mobile Bottom Navigation -->
+    <nav class="mobile-nav">
+        <button onclick="switchTab('dashboard')" id="mobile-tab-dashboard" class="mobile-nav-item active">
+            <i class="ph ph-squares-four text-xl"></i>
+            <span>Home</span>
+        </button>
+        <button onclick="switchTab('tasks')" id="mobile-tab-tasks" class="mobile-nav-item">
+            <i class="ph ph-list-checks text-xl"></i>
+            <span>Tasks</span>
+        </button>
+        <button onclick="openTaskModal()" class="mobile-nav-item bg-gradient-to-r from-primary to-secondary text-white rounded-2xl px-4 shadow-lg">
+            <i class="ph ph-plus text-2xl"></i>
+        </button>
+        <button onclick="switchTab('activity')" id="mobile-tab-activity" class="mobile-nav-item">
+            <i class="ph ph-chart-bar text-xl"></i>
+            <span>Activity</span>
+        </button>
+        <button onclick="switchTab('notes')" id="mobile-tab-notes" class="mobile-nav-item">
+            <i class="ph ph-note text-xl"></i>
+            <span>Notes</span>
+        </button>
+    </nav>
+
+    <!-- Modal Overlay -->
+    <div id="modalOverlay" class="fixed inset-0 bg-black/60 modal-overlay z-50 hidden flex items-center justify-center p-3 sm:p-4" onclick="closeAllModals()">
+        
+        <!-- Task Modal -->
+        <div id="taskModal" class="hidden bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto border border-border" onclick="event.stopPropagation()">
+            <div class="flex justify-between items-center mb-4 sm:mb-6">
+                <h3 id="taskModalTitle" class="text-base sm:text-lg font-bold text-gray-800">Add New Task</h3>
+                <button onclick="closeAllModals()" class="btn btn-ghost btn-icon-sm">
+                    <i class="ph ph-x text-gray-600"></i>
+                </button>
+            </div>
+            <form id="taskForm" onsubmit="saveTask(event)">
+                <input type="hidden" id="taskId">
+                <input type="hidden" id="taskDefaultStatus" value="todo">
+                
+                <div class="mb-3 sm:mb-4">
+                    <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5 sm:mb-2">Task Title *</label>
+                    <input type="text" id="taskTitle" required class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-muted rounded-xl text-xs sm:text-sm border border-border" placeholder="What do you need to do?">
+                </div>
+                
+                <div class="mb-3 sm:mb-4">
+                    <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5 sm:mb-2">Description</label>
+                    <textarea id="taskDescription" rows="3" class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-muted rounded-xl text-xs sm:text-sm border border-border resize-none" placeholder="Add more details..."></textarea>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-3 sm:gap-4 mb-3 sm:mb-4">
+                    <div>
+                        <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5 sm:mb-2">Priority</label>
+                        <select id="taskPriority" class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-muted rounded-xl text-xs sm:text-sm border border-border">
+                            <option value="high">High</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="low">Low</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5 sm:mb-2">Color</label>
+                        <select id="taskColor" class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-muted rounded-xl text-xs sm:text-sm border border-border">
+                            <option value="blue">Blue</option>
+                            <option value="purple">Purple</option>
+                            <option value="orange">Orange</option>
+                            <option value="green">Green</option>
+                            <option value="pink">Pink</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-3 sm:gap-4 mb-3 sm:mb-4">
+                    <div>
+                        <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5 sm:mb-2">Status</label>
+                        <select id="taskStatus" class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-muted rounded-xl text-xs sm:text-sm border border-border">
+                            <option value="todo">To Do</option>
+                            <option value="progress">In Progress</option>
+                            <option value="done">Completed</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5 sm:mb-2">Due Date</label>
+                        <input type="date" id="taskDueDate" class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-muted rounded-xl text-xs sm:text-sm border border-border">
+                    </div>
+                </div>
+                
+                <div class="mb-4 sm:mb-6">
+                    <div class="flex justify-between items-center mb-1.5 sm:mb-2">
+                        <label class="text-xs sm:text-sm font-semibold text-gray-700">Progress</label>
+                        <span id="progressValue" class="text-xs sm:text-sm font-bold text-primary">0%</span>
+                    </div>
+                    <input type="range" id="taskProgress" min="0" max="100" value="0" class="range-slider" oninput="document.getElementById('progressValue').textContent = this.value + '%'">
+                </div>
+                
+                <div class="flex gap-2 sm:gap-3">
+                    <button type="button" onclick="closeAllModals()" class="btn btn-secondary flex-1 btn-sm sm:btn-md">Cancel</button>
+                    <button type="submit" class="btn btn-primary flex-1 btn-sm sm:btn-md">Save Task</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Note Modal -->
+        <div id="noteModal" class="hidden bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 w-full max-w-md shadow-2xl border border-border" onclick="event.stopPropagation()">
+            <div class="flex justify-between items-center mb-4 sm:mb-6">
+                <h3 class="text-base sm:text-lg font-bold text-gray-800">Add Quick Note</h3>
+                <button onclick="closeAllModals()" class="btn btn-ghost btn-icon-sm">
+                    <i class="ph ph-x text-gray-600"></i>
+                </button>
+            </div>
+            <form id="noteForm" onsubmit="saveNote(event)">
+                <input type="hidden" id="noteId">
+                
+                <div class="mb-3 sm:mb-4">
+                    <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5 sm:mb-2">Note *</label>
+                    <textarea id="noteContent" rows="5" required class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-muted rounded-xl text-xs sm:text-sm border border-border resize-none" placeholder="Write your thoughts..."></textarea>
+                </div>
+                
+                <div class="mb-4 sm:mb-6">
+                    <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-2 sm:mb-3">Color Theme</label>
+                    <div class="flex gap-2 sm:gap-3 flex-wrap">
+                        <button type="button" onclick="selectNoteColor('purple')" class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-purple-100 border-2 border-purple-300 note-color-btn transition-all hover:scale-110" data-color="purple"></button>
+                        <button type="button" onclick="selectNoteColor('orange')" class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-orange-100 border-2 border-transparent note-color-btn transition-all hover:scale-110" data-color="orange"></button>
+                        <button type="button" onclick="selectNoteColor('blue')" class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-blue-100 border-2 border-transparent note-color-btn transition-all hover:scale-110" data-color="blue"></button>
+                        <button type="button" onclick="selectNoteColor('green')" class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-green-100 border-2 border-transparent note-color-btn transition-all hover:scale-110" data-color="green"></button>
+                        <button type="button" onclick="selectNoteColor('pink')" class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-pink-100 border-2 border-transparent note-color-btn transition-all hover:scale-110" data-color="pink"></button>
+                    </div>
+                    <input type="hidden" id="noteColor" value="purple">
+                </div>
+                
+                <div class="flex gap-2 sm:gap-3">
+                    <button type="button" onclick="closeAllModals()" class="btn btn-secondary flex-1 btn-sm sm:btn-md">Cancel</button>
+                    <button type="submit" class="btn btn-primary flex-1 btn-sm sm:btn-md">Save Note</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Profile Modal -->
+        <div id="profileModal" class="hidden bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 w-full max-w-md shadow-2xl border border-border max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+            <div class="flex justify-between items-center mb-4 sm:mb-6">
+                <h3 class="text-base sm:text-lg font-bold text-gray-800">Profile Settings</h3>
+                <button onclick="closeAllModals()" class="btn btn-ghost btn-icon-sm">
+                    <i class="ph ph-x text-gray-600"></i>
+                </button>
+            </div>
+            <form id="profileForm" onsubmit="saveProfile(event)">
+                <div class="flex justify-center mb-4 sm:mb-6">
+                    <div class="relative">
+                        <img id="profilePreview" src="https://api.dicebear.com/7.x/fun-emoji/svg?seed=rgr" class="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl border-4 border-primary/20 shadow-lg bg-gray-100">
+                    </div>
+                </div>
+                
+                <!-- Avatar Picker -->
+                <div class="mb-4 sm:mb-5">
+                    <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-2 sm:mb-3">Choose Avatar</label>
+                    <div class="grid grid-cols-5 gap-2 sm:gap-3" id="avatarPicker">
+                        <img src="https://api.dicebear.com/7.x/fun-emoji/svg?seed=rgr" class="avatar-option" onclick="selectAvatar(this)" data-seed="rgr">
+                        <img src="https://api.dicebear.com/7.x/fun-emoji/svg?seed=vvl" class="avatar-option" onclick="selectAvatar(this)" data-seed="vvl">
+                        <img src="https://api.dicebear.com/7.x/fun-emoji/svg?seed=hello" class="avatar-option" onclick="selectAvatar(this)" data-seed="hello">
+                        <img src="https://api.dicebear.com/7.x/fun-emoji/svg?seed=ccd" class="avatar-option" onclick="selectAvatar(this)" data-seed="ccd">
+                        <img src="https://api.dicebear.com/7.x/fun-emoji/svg?seed=ccb" class="avatar-option" onclick="selectAvatar(this)" data-seed="ccb">
+                        <img src="https://api.dicebear.com/7.x/fun-emoji/svg?seed=fbbf" class="avatar-option" onclick="selectAvatar(this)" data-seed="fbbf">
+                        <img src="https://api.dicebear.com/7.x/fun-emoji/svg?seed=dddd" class="avatar-option selected" onclick="selectAvatar(this)" data-seed="dddd">
+                        <img src="https://api.dicebear.com/7.x/fun-emoji/svg?seed=vbdfb" class="avatar-option" onclick="selectAvatar(this)" data-seed="vbdfb">
+                        <img src="https://api.dicebear.com/7.x/fun-emoji/svg?seed=fgr" class="avatar-option" onclick="selectAvatar(this)" data-seed="fgr">
+                        <img src="https://api.dicebear.com/7.x/fun-emoji/svg?seed=bgg" class="avatar-option" onclick="selectAvatar(this)" data-seed="bgg">
+                    </div>
+                </div>
+                
+                <div class="mb-3 sm:mb-4">
+                    <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5 sm:mb-2">Your Name</label>
+                    <input type="text" id="profileName" class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-muted rounded-xl text-xs sm:text-sm border border-border" placeholder="Enter your name">
+                </div>
+                
+                <div class="mb-4 sm:mb-6">
+                    <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5 sm:mb-2">Email</label>
+                    <input type="email" id="profileEmail" class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-muted rounded-xl text-xs sm:text-sm border border-border" placeholder="your@email.com">
+                </div>
+                
+                <input type="hidden" id="profileAvatar" value="https://api.dicebear.com/7.x/fun-emoji/svg?seed=rgr">
+                
+                <div class="flex gap-2 sm:gap-3 mb-4 sm:mb-6">
+                    <button type="button" onclick="closeAllModals()" class="btn btn-secondary flex-1 btn-sm sm:btn-md">Cancel</button>
+                    <button type="submit" class="btn btn-primary flex-1 btn-sm sm:btn-md">Save</button>
+                </div>
+                
+                <div class="pt-3 sm:pt-4 border-t border-border">
+                    <button type="button" onclick="resetAllData()" class="btn btn-danger w-full btn-sm sm:btn-md">
+                        <i class="ph ph-trash"></i> Reset All Data
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Search Modal -->
+        <div id="searchModal" class="hidden bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 w-full max-w-lg shadow-2xl border border-border" onclick="event.stopPropagation()">
+            <div class="flex items-center gap-3 mb-4 bg-muted rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 border border-border">
+                <i class="ph ph-magnifying-glass text-lg sm:text-xl text-gray-400"></i>
+                <input type="text" id="searchInput" class="flex-1 bg-transparent text-sm sm:text-base outline-none" placeholder="Search tasks and notes..." oninput="performSearch(this.value)">
+                <button onclick="closeAllModals()" class="text-gray-400 hover:text-gray-600"><i class="ph ph-x text-base sm:text-lg"></i></button>
+            </div>
+            <div id="searchResults" class="max-h-[300px] sm:max-h-[400px] overflow-y-auto">
+                <p class="text-center text-gray-400 py-6 sm:py-8 text-sm">Type to search...</p>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Notification Panel -->
+    <div id="notificationPanel" class="hidden fixed top-20 sm:top-24 right-3 sm:right-4 md:right-8 bg-white rounded-xl sm:rounded-2xl p-4 sm:p-5 w-72 sm:w-80 shadow-2xl z-50 border border-border">
+        <div class="flex justify-between items-center mb-3 sm:mb-4 pb-2 sm:pb-3 border-b border-border">
+            <h4 class="font-bold text-gray-800 flex items-center gap-2 text-sm sm:text-base">
+                <i class="ph ph-bell text-primary"></i> Notifications
+            </h4>
+            <button onclick="clearNotifications()" class="btn btn-ghost btn-sm text-gray-500">Clear all</button>
+        </div>
+        <div id="notificationList" class="max-h-[250px] sm:max-h-[300px] overflow-y-auto space-y-2">
+            <p class="text-center text-gray-400 py-4 text-xs sm:text-sm">No notifications</p>
+        </div>
+    </div>
+
+    <script>
+        // ============ DATA STORE ============
+        let appData = {
+            profile: { name: '', email: '', avatar: 'https://api.dicebear.com/7.x/fun-emoji/svg?seed=rgr' },
+            tasks: [],
+            notes: [],
+            tracker: Array(7).fill(null).map(() => ({ focus: 0, break: 0 })),
+            notifications: [],
+            streak: 0,
+            lastActiveDate: null
+        };
+
+        let selectedDay = 0;
+        let barChart, pieChart, lineChart, activityBarChart;
+
+        // ============ INITIALIZATION ============
+        function init() {
+            loadData();
+            updateGreeting();
+            renderAll();
+            initCharts();
+            updateCharts();
+            updateStreak();
+        }
+
+        function loadData() {
+            const saved = localStorage.getItem('tasklynPersonalData');
+            if (saved) appData = JSON.parse(saved);
+        }
+
+        function saveData() {
+            localStorage.setItem('tasklynPersonalData', JSON.stringify(appData));
+        }
+
+        function generateId() {
+            return 'T' + Math.random().toString(36).substr(2, 9).toUpperCase();
+        }
+
+        function updateGreeting() {
+            const hour = new Date().getHours();
+            let greeting = 'Good morning!';
+            let icon = 'ph-sun';
+            let iconColor = 'text-yellow-500';
+            
+            if (hour >= 12 && hour < 17) { greeting = 'Good afternoon!'; icon = 'ph-sun-dim'; iconColor = 'text-orange-400'; }
+            else if (hour >= 17 && hour < 21) { greeting = 'Good evening!'; icon = 'ph-moon-stars'; iconColor = 'text-indigo-400'; }
+            else if (hour >= 21 || hour < 5) { greeting = 'Good night!'; icon = 'ph-moon'; iconColor = 'text-blue-400'; }
+            
+            document.getElementById('greeting').innerHTML = `${greeting} <i class="ph ${icon} ${iconColor}"></i>`;
+            document.getElementById('currentDate').textContent = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+            
+            const pendingTasks = appData.tasks.filter(t => t.status !== 'done').length;
+            document.getElementById('taskSummary').textContent = pendingTasks > 0 ? `${pendingTasks} pending task${pendingTasks > 1 ? 's' : ''}` : "All caught up!";
+        }
+
+        function updateStreak() {
+            const today = new Date().toDateString();
+            if (appData.lastActiveDate !== today) {
+                const yesterday = new Date();
+                yesterday.setDate(yesterday.getDate() - 1);
+                appData.streak = appData.lastActiveDate === yesterday.toDateString() ? appData.streak + 1 : 1;
+                appData.lastActiveDate = today;
+                saveData();
+            }
+        }
+
+        // ============ RENDER FUNCTIONS ============
+        function renderAll() {
+            renderProfile();
+            renderTasks();
+            renderNotes();
+            updateStats();
+            updateNotificationBadge();
+            loadActivityForDay(selectedDay);
+        }
+
+        function renderProfile() {
+            document.getElementById('userName').textContent = appData.profile.name || 'Your Name';
+            document.getElementById('userAvatar').src = appData.profile.avatar || 'https://api.dicebear.com/7.x/fun-emoji/svg?seed=rgr';
+        }
+
+        function getPriorityIcon(priority) {
+            const icons = {
+                high: '<i class="ph-fill ph-arrow-circle-up text-red-500"></i>',
+                medium: '<i class="ph-fill ph-minus-circle text-amber-500"></i>',
+                low: '<i class="ph-fill ph-arrow-circle-down text-green-500"></i>'
+            };
+            return icons[priority] || icons.medium;
+        }
+
+        function getPriorityBadge(priority) {
+            const badges = { high: 'priority-high', medium: 'priority-medium', low: 'priority-low' };
+            return badges[priority] || badges.medium;
+        }
+
+        function getProgressBarClass(status) {
+            const classes = { todo: 'progress-todo', progress: 'progress-working', done: 'progress-done' };
+            return classes[status] || classes.todo;
+        }
+
+        function renderTasks() {
+            const todayContainer = document.getElementById('todayTasksContainer');
+            const todoColumn = document.getElementById('todoColumn');
+            const progressColumn = document.getElementById('progressColumn');
+            const doneColumn = document.getElementById('doneColumn');
+
+            const filterStatus = document.getElementById('filterStatus')?.value || 'all';
+            const filterPriority = document.getElementById('filterPriority')?.value || 'all';
+
+            todayContainer.innerHTML = '';
+            todoColumn.innerHTML = '';
+            progressColumn.innerHTML = '';
+            doneColumn.innerHTML = '';
+
+            let filteredTasks = appData.tasks;
+            if (filterStatus !== 'all') filteredTasks = filteredTasks.filter(t => t.status === filterStatus);
+            if (filterPriority !== 'all') filteredTasks = filteredTasks.filter(t => t.priority === filterPriority);
+
+            if (appData.tasks.length === 0) {
+                todayContainer.innerHTML = `
+                    <div class="flex items-center justify-center w-full text-gray-400">
+                        <div class="text-center">
+                            <i class="ph ph-clipboard-text text-5xl sm:text-6xl mb-3 text-gray-300"></i>
+                            <p class="text-gray-500 font-medium text-sm sm:text-base">No tasks yet</p>
+                            <p class="text-xs sm:text-sm text-gray-400">Click "Add New Task" to get started!</p>
+                        </div>
+                    </div>`;
+            } else {
+                const todayTasks = appData.tasks.filter(t => t.status !== 'done').slice(0, 6);
+                todayTasks.forEach(task => todayContainer.appendChild(createTaskCard(task)));
+                if (todayTasks.length === 0) {
+                    todayContainer.innerHTML = `
+                        <div class="flex items-center justify-center w-full text-gray-400">
+                            <div class="text-center">
+                                <i class="ph ph-check-circle text-5xl sm:text-6xl mb-3 text-green-300"></i>
+                                <p class="text-gray-500 font-medium text-sm sm:text-base">All tasks completed!</p>
+                                <p class="text-xs sm:text-sm text-gray-400">Great job! Add more tasks or take a break.</p>
+                            </div>
+                        </div>`;
+                }
+            }
+
+            filteredTasks.forEach(task => {
+                const kanbanCard = createKanbanCard(task);
+                if (task.status === 'todo') todoColumn.appendChild(kanbanCard);
+                else if (task.status === 'progress') progressColumn.appendChild(kanbanCard);
+                else doneColumn.appendChild(kanbanCard);
+            });
+
+            document.getElementById('todoCount').textContent = appData.tasks.filter(t => t.status === 'todo').length;
+            document.getElementById('progressCount').textContent = appData.tasks.filter(t => t.status === 'progress').length;
+            document.getElementById('doneCount').textContent = appData.tasks.filter(t => t.status === 'done').length;
+        }
+
+        function createTaskCard(task) {
+            const div = document.createElement('div');
+            div.className = `task-card min-w-[200px] sm:min-w-[240px] md:min-w-[260px] color-${task.color} p-4 sm:p-5 rounded-2xl flex flex-col justify-between h-[220px] sm:h-[260px] cursor-pointer`;
+            div.onclick = () => editTask(task.id);
+
+            const progressClass = getProgressBarClass(task.status);
+
+            div.innerHTML = `
+                <div>
+                    <div class="flex justify-between items-start mb-2 sm:mb-3">
+                        <span class="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-[9px] sm:text-[10px] font-bold uppercase tracking-wide ${getPriorityBadge(task.priority)}">
+                            ${getPriorityIcon(task.priority)} ${task.priority}
+                        </span>
+                        <button onclick="event.stopPropagation(); deleteTask('${task.id}')" class="btn btn-ghost btn-icon-sm w-7 h-7 sm:w-8 sm:h-8 bg-white/60 hover:bg-red-100">
+                            <i class="ph ph-trash text-gray-400 hover:text-red-500 text-sm"></i>
+                        </button>
+                    </div>
+                    <h4 class="text-lg sm:text-xl font-bold text-gray-800 leading-tight mb-1 sm:mb-2">${task.title}</h4>
+                    ${task.description ? `<p class="text-[10px] sm:text-xs text-gray-600 line-clamp-2">${task.description}</p>` : ''}
+                </div>
+                <div>
+                    ${task.dueDate ? `<p class="text-[10px] sm:text-xs text-gray-500 mb-2 sm:mb-3 flex items-center gap-1 sm:gap-1.5"><i class="ph ph-calendar"></i>${new Date(task.dueDate).toLocaleDateString()}</p>` : ''}
+                    <div class="flex items-center justify-between text-[10px] sm:text-xs text-gray-600 mb-1.5 sm:mb-2">
+                        <span class="font-semibold">Progress</span>
+                        <span class="font-bold text-gray-800">${task.progress}%</span>
+                    </div>
+                    <div class="progress-bar ${progressClass}">
+                        <div class="progress-fill" style="width: ${task.progress}%"></div>
+                    </div>
+                </div>
+            `;
+            return div;
+        }
+
+        function createKanbanCard(task) {
+            const div = document.createElement('div');
+            div.className = 'kanban-card p-3 sm:p-4 cursor-pointer';
+            div.onclick = () => editTask(task.id);
+
+            const progressClass = getProgressBarClass(task.status);
+
+            div.innerHTML = `
+                <div class="flex items-start justify-between mb-2">
+                    <h4 class="font-semibold text-gray-800 text-xs sm:text-sm flex-1 pr-2">${task.title}</h4>
+                    <span class="text-base sm:text-lg">${getPriorityIcon(task.priority)}</span>
+                </div>
+                ${task.description ? `<p class="text-[10px] sm:text-xs text-gray-500 mb-2 sm:mb-3 line-clamp-2">${task.description}</p>` : ''}
+                ${task.dueDate ? `<p class="text-[9px] sm:text-[10px] text-gray-400 mb-2 flex items-center gap-1"><i class="ph ph-calendar"></i>${new Date(task.dueDate).toLocaleDateString()}</p>` : ''}
+                <div class="flex items-center justify-between mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-gray-100">
+                    <div class="flex items-center gap-2 flex-1">
+                        <div class="flex-1 progress-bar ${progressClass}">
+                            <div class="progress-fill" style="width: ${task.progress}%"></div>
+                        </div>
+                        <span class="text-[9px] sm:text-[10px] font-bold text-gray-500">${task.progress}%</span>
+                    </div>
+                    <div class="flex gap-1 ml-2 sm:ml-3">
+                        <button onclick="event.stopPropagation(); moveTask('${task.id}', 'prev')" class="btn btn-ghost btn-icon-sm w-6 h-6 sm:w-7 sm:h-7 ${task.status === 'todo' ? 'opacity-30 cursor-not-allowed' : ''}">
+                            <i class="ph ph-arrow-left text-[10px] sm:text-xs text-gray-600"></i>
+                        </button>
+                        <button onclick="event.stopPropagation(); moveTask('${task.id}', 'next')" class="btn btn-ghost btn-icon-sm w-6 h-6 sm:w-7 sm:h-7 ${task.status === 'done' ? 'opacity-30 cursor-not-allowed' : ''}">
+                            <i class="ph ph-arrow-right text-[10px] sm:text-xs text-gray-600"></i>
+                        </button>
+                        <button onclick="event.stopPropagation(); deleteTask('${task.id}')" class="btn btn-ghost btn-icon-sm w-6 h-6 sm:w-7 sm:h-7 hover:bg-red-50">
+                            <i class="ph ph-trash text-[10px] sm:text-xs text-gray-400 hover:text-red-500"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+            return div;
+        }
+
+        function renderNotes() {
+            const dashboardContainer = document.getElementById('dashboardNotesContainer');
+            const allContainer = document.getElementById('allNotesContainer');
+            
+            const colorClasses = {
+                purple: 'bg-purple-50 border-purple-200',
+                orange: 'bg-orange-50 border-orange-200',
+                blue: 'bg-blue-50 border-blue-200',
+                green: 'bg-green-50 border-green-200',
+                pink: 'bg-pink-50 border-pink-200'
+            };
+
+            if (appData.notes.length === 0) {
+                dashboardContainer.innerHTML = `<div class="text-center text-gray-400 py-4 sm:py-6"><i class="ph ph-note-pencil text-3xl sm:text-4xl mb-2 text-gray-300"></i><p class="text-xs sm:text-sm font-medium">No notes yet</p></div>`;
+                allContainer.innerHTML = `<div class="col-span-full text-center text-gray-400 py-12 sm:py-20"><i class="ph ph-note-pencil text-5xl sm:text-7xl mb-3 sm:mb-4 text-gray-300"></i><p class="text-base sm:text-lg font-medium">No notes yet</p><p class="text-xs sm:text-sm">Create your first note to get started!</p></div>`;
+                return;
+            }
+
+            dashboardContainer.innerHTML = appData.notes.slice(0, 3).map(note => `
+                <div class="${colorClasses[note.color] || 'bg-purple-50 border-purple-200'} p-3 sm:p-4 rounded-xl cursor-pointer hover:shadow-md transition-all border" onclick="editNote('${note.id}')">
+                    <p class="text-xs sm:text-sm text-gray-700 line-clamp-2 font-medium">${note.content}</p>
+                    <p class="text-[9px] sm:text-[10px] text-gray-400 mt-1.5 sm:mt-2 flex items-center gap-1"><i class="ph ph-clock"></i>${new Date(note.createdAt).toLocaleDateString()}</p>
+                </div>
+            `).join('');
+
+            allContainer.innerHTML = appData.notes.map(note => `
+                <div class="${colorClasses[note.color] || 'bg-purple-50 border-purple-200'} p-4 sm:p-5 rounded-xl sm:rounded-2xl cursor-pointer hover:shadow-lg transition-all border" onclick="editNote('${note.id}')">
+                    <div class="flex justify-between items-start mb-2 sm:mb-3">
+                        <p class="text-[9px] sm:text-[10px] text-gray-400 flex items-center gap-1"><i class="ph ph-clock"></i>${new Date(note.createdAt).toLocaleDateString()}</p>
+                        <button onclick="event.stopPropagation(); deleteNote('${note.id}')" class="btn btn-ghost btn-icon-sm w-6 h-6 sm:w-7 sm:h-7 bg-white/60 hover:bg-red-100">
+                            <i class="ph ph-trash text-gray-400 hover:text-red-500 text-[10px] sm:text-xs"></i>
+                        </button>
+                    </div>
+                    <p class="text-xs sm:text-sm text-gray-700 font-medium">${note.content}</p>
+                </div>
+            `).join('');
+        }
+
+        function updateStats() {
+            const total = appData.tasks.length;
+            const done = appData.tasks.filter(t => t.status === 'done').length;
+            const progress = appData.tasks.filter(t => t.status === 'progress').length;
+            const todo = appData.tasks.filter(t => t.status === 'todo').length;
+            const totalFocus = appData.tracker.reduce((sum, day) => sum + day.focus, 0);
+            const totalBreak = appData.tracker.reduce((sum, day) => sum + day.break, 0);
+
+            document.getElementById('statTotalTasks').textContent = total;
+            document.getElementById('statCompleted').textContent = done;
+            document.getElementById('statInProgress').textContent = progress;
+            document.getElementById('statTotalHours').textContent = totalFocus + 'h';
+
+            const donePercent = total > 0 ? Math.round((done / total) * 100) : 0;
+            const progressPercent = total > 0 ? Math.round((progress / total) * 100) : 0;
+            const todoPercent = total > 0 ? Math.round((todo / total) * 100) : 0;
+
+            // Update horizontal progress bars
+            document.getElementById('progressDone').textContent = donePercent + '%';
+            document.getElementById('progressWorking').textContent = progressPercent + '%';
+            document.getElementById('progressTodo').textContent = todoPercent + '%';
+            
+            // Update progress bar widths
+            document.getElementById('doneProgressBar').style.width = donePercent + '%';
+            document.getElementById('workingProgressBar').style.width = progressPercent + '%';
+            document.getElementById('todoProgressBar').style.width = todoPercent + '%';
+            
+            // Update task counts
+            document.getElementById('doneTaskCount').textContent = done;
+            document.getElementById('workingTaskCount').textContent = progress;
+            document.getElementById('todoTaskCount').textContent = todo;
+            
+            // Update summary stats
+            document.getElementById('statDoneCount').textContent = done;
+            document.getElementById('statWorkingCount').textContent = progress;
+            document.getElementById('statTodoCount').textContent = todo;
+            
+            // Update overall progress
+            document.getElementById('overallProgress').textContent = donePercent + '%';
+
+            document.getElementById('analyticTotal').textContent = total;
+            document.getElementById('analyticDone').textContent = done;
+            document.getElementById('analyticNotes').textContent = appData.notes.length;
+            document.getElementById('analyticStreak').textContent = appData.streak || 0;
+
+            document.getElementById('totalFocusHours').textContent = totalFocus + 'h';
+            document.getElementById('totalBreakHours').textContent = totalBreak + 'h';
+            
+            const activeDays = appData.tracker.filter(d => d.focus > 0).length || 1;
+            document.getElementById('avgFocusHours').textContent = (totalFocus / activeDays).toFixed(1) + 'h';
+        }
+
+        // ============ CHARTS ============
+        function initCharts() {
+            const chartColors = { primary: '#6366f1', secondary: '#8b5cf6', gray: '#d1d5db', green: '#22c55e', orange: '#f97316', blue: '#3b82f6' };
+
+            barChart = new ApexCharts(document.querySelector("#barChart"), {
+                series: [{ name: 'Focus', data: [0,0,0,0,0,0,0] }, { name: 'Break', data: [0,0,0,0,0,0,0] }],
+                chart: { type: 'bar', height: 200, toolbar: { show: false }, fontFamily: 'Inter, sans-serif' },
+                colors: [chartColors.primary, chartColors.gray],
+                plotOptions: { bar: { horizontal: false, columnWidth: '50%', borderRadius: 6, borderRadiusApplication: 'end' } },
+                dataLabels: { enabled: false },
+                stroke: { show: true, width: 3, colors: ['transparent'] },
+                xaxis: { categories: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], axisBorder: { show: false }, axisTicks: { show: false }, labels: { style: { colors: '#94a3b8', fontSize: '11px', fontWeight: 500 } } },
+                yaxis: { labels: { formatter: val => val + 'h', style: { colors: '#94a3b8', fontSize: '11px' } }, max: 12 },
+                grid: { borderColor: '#f1f5f9', strokeDashArray: 4 },
+                legend: { show: false },
+                tooltip: { y: { formatter: val => val + ' hours' } }
+            });
+            barChart.render();
+
+            activityBarChart = new ApexCharts(document.querySelector("#activityBarChart"), {
+                series: [{ name: 'Focus', data: [0,0,0,0,0,0,0] }, { name: 'Break', data: [0,0,0,0,0,0,0] }],
+                chart: { type: 'bar', height: 260, toolbar: { show: false }, fontFamily: 'Inter, sans-serif' },
+                colors: [chartColors.primary, chartColors.gray],
+                plotOptions: { bar: { horizontal: false, columnWidth: '45%', borderRadius: 8, borderRadiusApplication: 'end' } },
+                dataLabels: { enabled: false },
+                stroke: { show: true, width: 3, colors: ['transparent'] },
+                xaxis: { categories: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], axisBorder: { show: false }, axisTicks: { show: false }, labels: { style: { colors: '#94a3b8', fontSize: '11px', fontWeight: 500 } } },
+                yaxis: { labels: { formatter: val => val + 'h', style: { colors: '#94a3b8', fontSize: '11px' } }, max: 12 },
+                grid: { borderColor: '#f1f5f9', strokeDashArray: 4 },
+                legend: { show: false },
+                tooltip: { y: { formatter: val => val + ' hours' } }
+            });
+            activityBarChart.render();
+
+            pieChart = new ApexCharts(document.querySelector("#pieChart"), {
+                series: [0, 0, 0],
+                chart: { type: 'donut', height: 280, fontFamily: 'Inter, sans-serif' },
+                labels: ['Completed', 'In Progress', 'To Do'],
+                colors: [chartColors.green, chartColors.orange, chartColors.blue],
+                plotOptions: { pie: { donut: { size: '65%', labels: { show: true, total: { show: true, label: 'Total', fontSize: '12px', fontWeight: 600, color: '#64748b' } } } } },
+                legend: { position: 'bottom', fontWeight: 500, fontSize: '12px' },
+                stroke: { width: 0 }
+            });
+            pieChart.render();
+
+            lineChart = new ApexCharts(document.querySelector("#lineChart"), {
+                series: [{ name: 'Focus Hours', data: [0,0,0,0,0,0,0] }],
+                chart: { type: 'area', height: 280, toolbar: { show: false }, fontFamily: 'Inter, sans-serif' },
+                colors: [chartColors.primary],
+                fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.5, opacityTo: 0.1 } },
+                stroke: { curve: 'smooth', width: 3 },
+                xaxis: { categories: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], labels: { style: { colors: '#94a3b8', fontSize: '11px', fontWeight: 500 } } },
+                yaxis: { labels: { formatter: val => val + 'h', style: { colors: '#94a3b8', fontSize: '11px' } } },
+                dataLabels: { enabled: false },
+                grid: { borderColor: '#f1f5f9', strokeDashArray: 4 }
+            });
+            lineChart.render();
+        }
+
+        function updateCharts() {
+            const total = appData.tasks.length || 1;
+            const done = appData.tasks.filter(t => t.status === 'done').length;
+            const progress = appData.tasks.filter(t => t.status === 'progress').length;
+            const todo = appData.tasks.filter(t => t.status === 'todo').length;
+
+            const focusData = appData.tracker.map(t => t.focus);
+            const breakData = appData.tracker.map(t => t.break);
+
+            barChart.updateSeries([{ name: 'Focus', data: focusData }, { name: 'Break', data: breakData }]);
+            activityBarChart.updateSeries([{ name: 'Focus', data: focusData }, { name: 'Break', data: breakData }]);
+            pieChart.updateSeries([done, progress, todo]);
+            lineChart.updateSeries([{ name: 'Focus Hours', data: focusData }]);
+        }
+
+        // ============ ACTIVITY FUNCTIONS ============
+        function selectDay(day) {
+            selectedDay = day;
+            document.querySelectorAll('.day-btn').forEach((btn, i) => btn.classList.toggle('active', i === day));
+            loadActivityForDay(day);
+        }
+
+        function loadActivityForDay(day) {
+            const dayData = appData.tracker[day] || { focus: 0, break: 0 };
+            document.getElementById('activityFocus').value = dayData.focus;
+            document.getElementById('activityBreak').value = dayData.break;
+            updateActivityPreview();
+        }
+
+        function updateActivityPreview() {
+            document.getElementById('focusValue').textContent = document.getElementById('activityFocus').value + 'h';
+            document.getElementById('breakValue').textContent = document.getElementById('activityBreak').value + 'h';
+        }
+
+        function saveActivity() {
+            appData.tracker[selectedDay] = {
+                focus: parseInt(document.getElementById('activityFocus').value) || 0,
+                break: parseInt(document.getElementById('activityBreak').value) || 0
+            };
+            saveData();
+            updateStats();
+            updateCharts();
+            addNotification('Activity logged successfully!');
+        }
+
+        // ============ MODAL FUNCTIONS ============
+        function openModal(modalId) {
+            document.getElementById('modalOverlay').classList.remove('hidden');
+            document.getElementById(modalId).classList.remove('hidden');
+        }
+
+        function closeAllModals() {
+            document.getElementById('modalOverlay').classList.add('hidden');
+            document.querySelectorAll('#modalOverlay > div').forEach(m => m.classList.add('hidden'));
+            document.getElementById('notificationPanel').classList.add('hidden');
+        }
+
+        function openTaskModal(defaultStatus = 'todo') {
+            document.getElementById('taskModalTitle').textContent = 'Add New Task';
+            document.getElementById('taskForm').reset();
+            document.getElementById('taskId').value = '';
+            document.getElementById('taskDefaultStatus').value = defaultStatus;
+            document.getElementById('taskStatus').value = defaultStatus;
+            document.getElementById('progressValue').textContent = '0%';
+            openModal('taskModal');
+        }
+
+        function editTask(id) {
+            const task = appData.tasks.find(t => t.id === id);
+            if (!task) return;
+            document.getElementById('taskModalTitle').textContent = 'Edit Task';
+            document.getElementById('taskId').value = task.id;
+            document.getElementById('taskTitle').value = task.title;
+            document.getElementById('taskDescription').value = task.description || '';
+            document.getElementById('taskPriority').value = task.priority;
+            document.getElementById('taskColor').value = task.color;
+            document.getElementById('taskStatus').value = task.status;
+            document.getElementById('taskDueDate').value = task.dueDate || '';
+            document.getElementById('taskProgress').value = task.progress;
+            document.getElementById('progressValue').textContent = task.progress + '%';
+            openModal('taskModal');
+        }
+
+        function saveTask(e) {
+            e.preventDefault();
+            const id = document.getElementById('taskId').value || generateId();
+            const isNew = !document.getElementById('taskId').value;
+            const status = document.getElementById('taskStatus').value;
+            let progress = parseInt(document.getElementById('taskProgress').value);
+            
+            if (status === 'done') progress = 100;
+            else if (status === 'todo' && progress === 100) progress = 0;
+
+            const task = {
+                id,
+                title: document.getElementById('taskTitle').value,
+                description: document.getElementById('taskDescription').value,
+                priority: document.getElementById('taskPriority').value,
+                color: document.getElementById('taskColor').value,
+                status: status,
+                dueDate: document.getElementById('taskDueDate').value,
+                progress: progress,
+                createdAt: isNew ? new Date().toISOString() : appData.tasks.find(t => t.id === id)?.createdAt
+            };
+
+            if (isNew) {
+                appData.tasks.unshift(task);
+                addNotification(`Task "${task.title}" created`);
+            } else {
+                const index = appData.tasks.findIndex(t => t.id === id);
+                appData.tasks[index] = task;
+            }
+
+            saveData();
+            renderAll();
+            updateCharts();
+            closeAllModals();
+        }
+
+        function deleteTask(id) {
+            if (!confirm('Delete this task?')) return;
+            appData.tasks = appData.tasks.filter(t => t.id !== id);
+            saveData();
+            renderAll();
+            updateCharts();
+            addNotification('Task deleted');
+        }
+
+        function moveTask(id, direction) {
+            const task = appData.tasks.find(t => t.id === id);
+            if (!task) return;
+            const statuses = ['todo', 'progress', 'done'];
+            const currentIndex = statuses.indexOf(task.status);
+            const newIndex = direction === 'next' ? currentIndex + 1 : currentIndex - 1;
+            if (newIndex >= 0 && newIndex < statuses.length) {
+                task.status = statuses[newIndex];
+                if (task.status === 'done') task.progress = 100;
+                else if (task.status === 'todo') task.progress = 0;
+                saveData();
+                renderAll();
+                updateCharts();
+            }
+        }
+
+        function clearCompletedTasks() {
+            if (!confirm('Clear all completed tasks?')) return;
+            appData.tasks = appData.tasks.filter(t => t.status !== 'done');
+            saveData();
+            renderAll();
+            updateCharts();
+        }
+
+        function openNoteModal() {
+            document.getElementById('noteForm').reset();
+            document.getElementById('noteId').value = '';
+            document.getElementById('noteColor').value = 'purple';
+            document.querySelectorAll('.note-color-btn').forEach(b => b.style.borderColor = b.dataset.color === 'purple' ? '#a855f7' : 'transparent');
+            openModal('noteModal');
+        }
+
+        function editNote(id) {
+            const note = appData.notes.find(n => n.id === id);
+            if (!note) return;
+            document.getElementById('noteId').value = note.id;
+            document.getElementById('noteContent').value = note.content;
+            document.getElementById('noteColor').value = note.color;
+            selectNoteColor(note.color);
+            openModal('noteModal');
+        }
+
+        function selectNoteColor(color) {
+            document.getElementById('noteColor').value = color;
+            const colorMap = { purple: '#a855f7', orange: '#f97316', blue: '#3b82f6', green: '#22c55e', pink: '#ec4899' };
+            document.querySelectorAll('.note-color-btn').forEach(b => b.style.borderColor = b.dataset.color === color ? colorMap[color] : 'transparent');
+        }
+
+        function saveNote(e) {
+            e.preventDefault();
+            const id = document.getElementById('noteId').value || generateId();
+            const isNew = !document.getElementById('noteId').value;
+            const note = {
+                id,
+                content: document.getElementById('noteContent').value,
+                color: document.getElementById('noteColor').value,
+                createdAt: isNew ? new Date().toISOString() : appData.notes.find(n => n.id === id)?.createdAt
+            };
+            if (isNew) { appData.notes.unshift(note); addNotification('Note saved'); }
+            else { const index = appData.notes.findIndex(n => n.id === id); appData.notes[index] = note; }
+            saveData();
+            renderNotes();
+            updateStats();
+            closeAllModals();
+        }
+
+        function deleteNote(id) {
+            if (!confirm('Delete this note?')) return;
+            appData.notes = appData.notes.filter(n => n.id !== id);
+            saveData();
+            renderNotes();
+            updateStats();
+        }
+
+        function showProfileSettings() {
+            document.getElementById('profileName').value = appData.profile.name;
+            document.getElementById('profileEmail').value = appData.profile.email;
+            document.getElementById('profileAvatar').value = appData.profile.avatar;
+            document.getElementById('profilePreview').src = appData.profile.avatar || 'https://api.dicebear.com/7.x/fun-emoji/svg?seed=rgr';
+            
+            // Reset avatar selection
+            document.querySelectorAll('.avatar-option').forEach(a => {
+                a.classList.remove('selected');
+                if (a.src === appData.profile.avatar) a.classList.add('selected');
+            });
+            
+            openModal('profileModal');
+        }
+
+        function selectAvatar(element) {
+            document.querySelectorAll('.avatar-option').forEach(a => a.classList.remove('selected'));
+            element.classList.add('selected');
+            document.getElementById('profileAvatar').value = element.src;
+            document.getElementById('profilePreview').src = element.src;
+        }
+
+        function saveProfile(e) {
+            e.preventDefault();
+            appData.profile.name = document.getElementById('profileName').value;
+            appData.profile.email = document.getElementById('profileEmail').value;
+            appData.profile.avatar = document.getElementById('profileAvatar').value || 'https://api.dicebear.com/7.x/fun-emoji/svg?seed=rgr';
+            saveData();
+            renderProfile();
+            closeAllModals();
+            addNotification('Profile updated');
+        }
+
+        function openSearchModal() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('searchResults').innerHTML = '<p class="text-center text-gray-400 py-6 sm:py-8 text-sm">Type to search...</p>';
+            openModal('searchModal');
+            setTimeout(() => document.getElementById('searchInput').focus(), 100);
+        }
+
+        function performSearch(query) {
+            const results = document.getElementById('searchResults');
+            if (!query.trim()) { results.innerHTML = '<p class="text-center text-gray-400 py-6 sm:py-8 text-sm">Type to search...</p>'; return; }
+            const q = query.toLowerCase();
+            const matchedTasks = appData.tasks.filter(t => t.title.toLowerCase().includes(q) || (t.description && t.description.toLowerCase().includes(q)));
+            const matchedNotes = appData.notes.filter(n => n.content.toLowerCase().includes(q));
+            let html = '';
+            if (matchedTasks.length) {
+                html += '<h4 class="font-bold text-gray-800 mb-2 sm:mb-3 flex items-center gap-2 text-sm"><i class="ph ph-list-checks text-primary"></i>Tasks</h4>';
+                html += matchedTasks.map(t => `<div class="p-3 sm:p-4 bg-muted rounded-xl mb-2 cursor-pointer hover:bg-gray-100 transition-colors border border-border" onclick="closeAllModals(); editTask('${t.id}')"><p class="font-semibold text-gray-800 text-xs sm:text-sm">${t.title}</p><p class="text-[10px] sm:text-xs text-gray-500 mt-1">${t.status} • ${t.priority} priority</p></div>`).join('');
+            }
+            if (matchedNotes.length) {
+                html += '<h4 class="font-bold text-gray-800 mb-2 sm:mb-3 mt-3 sm:mt-4 flex items-center gap-2 text-sm"><i class="ph ph-note text-primary"></i>Notes</h4>';
+                html += matchedNotes.map(n => `<div class="p-3 sm:p-4 bg-muted rounded-xl mb-2 cursor-pointer hover:bg-gray-100 transition-colors border border-border" onclick="closeAllModals(); editNote('${n.id}')"><p class="text-xs sm:text-sm text-gray-700 line-clamp-2">${n.content}</p><p class="text-[10px] sm:text-xs text-gray-400 mt-1 sm:mt-2">${new Date(n.createdAt).toLocaleDateString()}</p></div>`).join('');
+            }
+            if (!html) html = '<p class="text-center text-gray-400 py-6 sm:py-8 text-sm">No results found</p>';
+            results.innerHTML = html;
+        }
+
+        // ============ NOTIFICATIONS ============
+        function addNotification(message) {
+            appData.notifications.unshift({ id: generateId(), message, time: new Date().toISOString() });
+            if (appData.notifications.length > 10) appData.notifications.pop();
+            saveData();
+            updateNotificationBadge();
+        }
+
+        function updateNotificationBadge() {
+            const badge = document.getElementById('notificationBadge');
+            const count = appData.notifications.length;
+            badge.textContent = count;
+            badge.classList.toggle('hidden', count === 0);
+        }
+
+        function toggleNotifications() {
+            const panel = document.getElementById('notificationPanel');
+            panel.classList.toggle('hidden');
+            if (!panel.classList.contains('hidden')) {
+                const list = document.getElementById('notificationList');
+                list.innerHTML = appData.notifications.length === 0 
+                    ? '<p class="text-center text-gray-400 py-4 text-xs sm:text-sm">No notifications</p>'
+                    : appData.notifications.map(n => `<div class="p-2.5 sm:p-3 bg-muted rounded-xl text-xs sm:text-sm border border-border"><p class="text-gray-700 font-medium text-xs">${n.message}</p><p class="text-[9px] sm:text-[10px] text-gray-400 mt-1 flex items-center gap-1"><i class="ph ph-clock"></i>${new Date(n.time).toLocaleString()}</p></div>`).join('');
+            }
+        }
+
+        function clearNotifications() {
+            appData.notifications = [];
+            saveData();
+            updateNotificationBadge();
+            document.getElementById('notificationList').innerHTML = '<p class="text-center text-gray-400 py-4 text-xs sm:text-sm">No notifications</p>';
+        }
+
+        // ============ NAVIGATION ============
+        function switchTab(tab) {
+            // Desktop nav
+            document.querySelectorAll('.nav-item').forEach(t => { t.classList.remove('active'); t.classList.add('text-gray-600'); });
+            const desktopTab = document.getElementById('tab-' + tab);
+            if (desktopTab) {
+                desktopTab.classList.add('active');
+                desktopTab.classList.remove('text-gray-600');
+            }
+            
+            // Mobile nav
+            document.querySelectorAll('.mobile-nav-item').forEach(t => t.classList.remove('active'));
+            const mobileTab = document.getElementById('mobile-tab-' + tab);
+            if (mobileTab) mobileTab.classList.add('active');
+            
+            // Show view
+            document.querySelectorAll('.view-content').forEach(v => v.classList.add('hidden'));
+            document.getElementById('view-' + tab).classList.remove('hidden');
+            
+            if (tab === 'analytics') setTimeout(() => { pieChart.render(); lineChart.render(); }, 100);
+        }
+
+        function resetAllData() {
+            if (!confirm('This will delete ALL your data. Are you sure?')) return;
+            localStorage.removeItem('tasklynPersonalData');
+            location.reload();
+        }
+
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+
+</body>
+</html>
